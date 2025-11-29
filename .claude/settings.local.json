@@ -1,6 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs: modernize CLAUDE.md and add TanStack Query + Framer Motion\n\n- Rewrite CLAUDE.md with accurate versions, patterns, and examples\n- Add React 19 patterns (useActionState, useOptimistic, Server Actions)\n- Add TanStack Query and Framer Motion documentation\n- Create providers.tsx combining QueryClientProvider + ThemeProvider\n- Add type-check script to package.json\n- Install @tanstack/react-query and framer-motion dependencies\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "shadcn"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

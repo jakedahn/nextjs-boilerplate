@@ -4,81 +4,185 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Next.js 15 boilerplate with React 19, TypeScript, Supabase integration, and shadcn/ui components. It uses the App Router architecture.
+Next.js 16 + React 19 + TypeScript + Supabase + shadcn/ui boilerplate using the App Router.
 
-## Essential Commands
+## Commands
 
 ```bash
-# Development
-npm run dev              # Start development server
-npm run build            # Build for production
-npm run start            # Start production server
-npm run lint             # Run ESLint
-npm run type-check       # Run TypeScript compiler
-npm run db:generate-types # Generate TypeScript types from Supabase
+npm run dev        # Start development server (http://localhost:3000)
+npm run build      # Build for production
+npm run lint       # Run ESLint
+npm run type-check # Run TypeScript compiler (no emit)
 ```
+
+**Adding shadcn components**: `npx shadcn@latest add <component-name>`
 
 ## Architecture
 
-### Key Technologies
-- **Frontend**: Next.js 15.3.2, React 19.1.0, TypeScript 5
-- **Styling**: Tailwind CSS 4 (alpha), shadcn/ui components
-- **Backend**: Supabase (PostgreSQL, Auth, Real-time, Storage)
-- **Forms**: react-hook-form with zod validation
+**Stack**: Next.js 16, React 19, TypeScript 5, Tailwind CSS 4, Supabase, react-hook-form + zod
 
-### Project Structure
-- `src/app/` - Next.js App Router pages and layouts
-- `src/components/` - React components
-- `src/components/ui/` - 40+ shadcn/ui components (button, card, dialog, form, etc.)
-- `src/lib/supabase/` - Supabase client configuration for server/client/middleware
+**Path alias**: `@/*` → `./src/*` (always use this for imports)
+
+### Key Directories
+- `src/app/` - App Router pages (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`)
+- `src/components/ui/` - shadcn/ui components (40+)
+- `src/components/providers.tsx` - App providers (QueryClient, Theme)
+- `src/lib/supabase/` - Supabase client configuration
 - `src/hooks/` - Custom React hooks
+- `supabase/migrations/` - Database migrations
 
-### Path Mapping
-- `@/*` maps to `./src/*` - always use this import pattern
+## Supabase Clients
 
-## Important Patterns
+**Critical**: Server client is async and requires `await`.
 
-### Supabase Usage
-- Client components: Use `createClient()` from `@/lib/supabase/client`
-- Server components: Use `createClient()` from `@/lib/supabase/server`
-- Middleware: Use `createClient()` from `@/lib/supabase/middleware`
-- Always handle errors: throw in Server Components, setState in Client Components
-- Use real-time subscriptions only in Client Components
+```tsx
+// Client Component - synchronous
+import { createClient } from "@/lib/supabase/client"
+const supabase = createClient()
 
-### Component Patterns
-- Always prefer shadcn/ui components: `import { Button } from "@/components/ui/button"`
-- Available components: Button, Card, Dialog, Form, Input, Select, Table, Alert, Badge, Tabs, Sheet, etc.
-- Use proper component composition (e.g., Card with CardHeader, CardTitle, CardContent)
-- TypeScript interfaces for props with `children: React.ReactNode`
+// Server Component - async (MUST await)
+import { createClient } from "@/lib/supabase/server"
+const supabase = await createClient()
 
-### Server vs Client Components
-- Default to Server Components
-- Use `"use client"` directive only when needed (interactivity, browser APIs, real-time)
-- Server Actions are preferred over API routes
-- Data fetching in Server Components, real-time in Client Components
+// Admin operations (bypasses RLS - use carefully)
+import { createAdminClient } from "@/lib/supabase/server"
+const adminSupabase = await createAdminClient()
+```
 
-### Next.js App Router
-- Use these file conventions in `src/app/`:
-  - `page.tsx` for pages
-  - `layout.tsx` for layouts
-  - `loading.tsx` for loading states
-  - `error.tsx` for error boundaries
-  - `not-found.tsx` for 404 pages
+**Error handling**: Throw errors in Server Components, use `setState` in Client Components.
 
-### TypeScript Patterns
-- Strict mode is enabled - always provide types
-- Use generated database types: `type User = Database['public']['Tables']['users']['Row']`
-- React event types: `React.FormEvent<HTMLFormElement>`
+## Component Patterns
 
-## Database Patterns
-- Table naming: snake_case plurals (e.g., `users`, `user_profiles`)
-- Column naming: snake_case singular (e.g., `user_id`, `created_at`)
-- Foreign keys: `{table_singular}_id` format
-- Always use `public` schema
-- Enable RLS on all tables with policies
+- Default to **Server Components**; add `"use client"` only for interactivity, browser APIs, or real-time
+- Prefer **Server Actions** over API routes
+- Always use shadcn/ui components from `@/components/ui/`
+- Real-time subscriptions must be in Client Components
+
+## React 19 + Server Actions
+
+**Form handling with Server Actions**:
+```tsx
+"use server"
+async function submitForm(prevState: State, formData: FormData) {
+  const validated = schema.safeParse(Object.fromEntries(formData))
+  if (!validated.success) {
+    return { errors: validated.error.flatten().fieldErrors }
+  }
+  // Process data...
+  revalidatePath("/")
+  return { success: true }
+}
+```
+
+**Client-side with useActionState** (replaces deprecated useFormStatus):
+```tsx
+"use client"
+import { useActionState } from "react"
+
+const [state, formAction, isPending] = useActionState(submitForm, initialState)
+```
+
+**Optimistic updates**:
+```tsx
+const [optimisticItems, addOptimistic] = useOptimistic(items, (state, newItem) => [...state, newItem])
+```
+
+**Form validation**: Use shared Zod schemas for both client and server validation. Server-side validation is the security layer; client-side is for UX.
+
+## Code Style
+
+- Use `const` arrow functions: `const handleClick = () => {}`
+- Prefix event handlers with `handle`: `handleSubmit`, `handleKeyDown`
+- Use early returns for readability
+- Use descriptive variable names
+- Use `cn()` utility for conditional Tailwind classes
+
+## TanStack Query (Client-Side Data)
+
+Configured in `src/components/providers.tsx` (wraps app with QueryClientProvider + ThemeProvider).
+
+```tsx
+"use client"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { createClient } from "@/lib/supabase/client"
+
+// Fetch with caching
+const { data, isPending } = useQuery({
+  queryKey: ["posts"],
+  queryFn: async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from("posts").select("id, title")
+    return data
+  },
+})
+
+// Mutate with cache invalidation
+const queryClient = useQueryClient()
+const mutation = useMutation({
+  mutationFn: async (newPost: Post) => {
+    const supabase = createClient()
+    return supabase.from("posts").insert(newPost)
+  },
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+})
+```
+
+## Animation
+
+**Framer Motion** - for complex animations:
+```tsx
+import { motion, AnimatePresence } from "framer-motion"
+
+// Basic animation
+<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+
+// Wrap shadcn components
+const MotionCard = motion.create(Card)
+<MotionCard whileHover={{ scale: 1.02 }} />
+
+// Enter/exit animations require AnimatePresence wrapper
+<AnimatePresence>
+  {isVisible && <motion.div exit={{ opacity: 0 }}>...</motion.div>}
+</AnimatePresence>
+```
+
+**CSS animations**: Use **tw-animate-css** (not tailwindcss-animate) for Tailwind v4.
+
+**Best practices**:
+- Prefer `transform` and `opacity` for GPU-accelerated animations
+- Support `prefers-reduced-motion`: `const prefersReduced = useReducedMotion()`
+- Keep micro-interactions under 500ms
+
+## Accessibility
+
+- Implement proper ARIA labels and roles
+- Ensure keyboard navigation works (tabindex, focus management)
+- Use semantic HTML elements
+- Test with screen readers
+
+## Database Conventions
+
+**Naming**: Tables use snake_case plurals (`users`, `user_profiles`). Columns use snake_case singular. Foreign keys: `{table_singular}_id`.
+
+**RLS policies**:
+- Enable RLS on all tables
+- Separate policies per operation (SELECT, INSERT, UPDATE, DELETE)
+- Use `(select auth.uid())` (with select wrapper for performance)
+- Always specify roles with `TO authenticated` or `TO anon`
+
+**Migrations**: Files in `supabase/migrations/` follow format `YYYYMMDDHHmmss_description.sql`
+
+## SQL Style
+
+- Lowercase SQL keywords
+- Always specify schema (`public.`)
+- Use `identity generated always` for IDs
 - Add table comments describing purpose
-- Specify columns in queries instead of `select('*')`
+- Specify columns in queries (avoid `select *`)
 
-## Deployment
-- Optimized for Vercel deployment
-- Environment variables required: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+## Environment Variables
+
+Required:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (for admin client)
