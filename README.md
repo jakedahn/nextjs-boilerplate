@@ -16,11 +16,12 @@ A modern, feature-rich boilerplate for building full-stack web applications with
 - **React 19** features including `use()` hook
 
 ### 🎨 Beautiful UI Components
-- **60+ shadcn/ui components** pre-configured, built on **Base UI** (`@base-ui/react`) — not Radix. Compose triggers with the `render` prop (e.g. `<DialogTrigger render={<Button />}>`), not `asChild`
+- **63 shadcn/ui components** pre-configured, built on **Base UI** (`@base-ui/react`) — not Radix. Compose triggers with the `render` prop (e.g. `<DialogTrigger render={<Button />}>`), not `asChild`
 - Includes a chat component set: `message`, `bubble`, `message-scroller`, `attachment`, `marker`
+- Includes a Base UI `toast` (an alternative to `sonner`; mount only one `Toaster`) and a multi-step `questionnaire`
 - **Tailwind CSS 4**, configured directly in `src/app/globals.css` (`@theme`, `@custom-variant`) — there is no separate JS/TS config file for it
 - **Dark/light mode** theming via `next-themes`, wired up in `src/components/providers.tsx` and toggled with `src/components/theme-toggle.tsx`
-- **Framer Motion** for animations, **tw-animate-css** for CSS-based ones
+- **Motion** (`motion/react`) for animations, **tw-animate-css** for CSS-based ones
 
 ### 🔐 Authentication & Database (Supabase — optional)
 - **Supabase is optional.** The app runs without it: with no env vars set, the auth middleware becomes a no-op (no redirects) and `createClient`/`createAdminClient` throw a clear error if called. Set the env vars to turn it on — see the "Environment Variables" section below
@@ -33,8 +34,8 @@ A modern, feature-rich boilerplate for building full-stack web applications with
 
 ### 🛠 Developer Experience
 - **TypeScript** with strict type checking
-- **ESLint** (`eslint-config-next`)
-- **Vitest + Testing Library** test harness (`npm test`) — component and route tests live next to the code they cover
+- **ESLint 10** (`eslint-config-next`)
+- **Vitest 5 + Testing Library** test harness (`npm test`) — component and route tests live next to the code they cover
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): lint → type-check → test → build on every push and PR
 - **Path mapping** for clean imports (`@/components`, `@/lib`, ...)
 
@@ -47,6 +48,7 @@ cd nextjs-boilerplate
 ```
 
 ### 2. Install dependencies
+Requires Node.js 24 (24.15 or newer; older 24.x releases work but print `EBADENGINE` warnings).
 ```bash
 npm install
 ```

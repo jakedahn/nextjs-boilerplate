@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 
 import { createClient } from "@/lib/supabase/server"
 import { credentialsSchema } from "@/lib/auth/schemas"
@@ -19,7 +20,7 @@ export const signIn = async (
   const validated = credentialsSchema.safeParse(Object.fromEntries(formData))
 
   if (!validated.success) {
-    return { errors: validated.error.flatten().fieldErrors }
+    return { errors: z.flattenError(validated.error).fieldErrors }
   }
 
   const supabase = await createClient()
@@ -40,7 +41,7 @@ export const signUp = async (
   const validated = credentialsSchema.safeParse(Object.fromEntries(formData))
 
   if (!validated.success) {
-    return { errors: validated.error.flatten().fieldErrors }
+    return { errors: z.flattenError(validated.error).fieldErrors }
   }
 
   const supabase = await createClient()

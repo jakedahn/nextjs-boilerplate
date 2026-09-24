@@ -25,7 +25,7 @@ npm run type-check # Run TypeScript compiler (no emit)
 
 ### Key Directories
 - `src/app/` - App Router pages (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`)
-- `src/components/ui/` - shadcn/ui components (60+, incl. chat: message-scroller, message, bubble, attachment, marker)
+- `src/components/ui/` - shadcn/ui components (63, incl. toast (Base UI), questionnaire, and chat: message-scroller, message, bubble, attachment, marker)
 - `src/components/providers.tsx` - App providers (QueryClient, Theme)
 - `src/lib/supabase/` - Supabase client configuration
 - `src/hooks/` - Custom React hooks
@@ -60,6 +60,9 @@ const adminSupabase = await createAdminClient()
 - Always use shadcn/ui components from `@/components/ui/`
 - Components are built on **Base UI** (`@base-ui/react`), not Radix: compose triggers with the `render` prop (`<DialogTrigger render={<Button />}>icon</DialogTrigger>`), not `asChild`
 - Real-time subscriptions must be in Client Components
+- cn() is re-exported from the zero-dependency `cn` package via `@/lib/utils`; always import it from `@/lib/utils` and rewrite the `from "cn"` import that `shadcn add` writes into new files
+- Never run `shadcn add --all`, `add chart` (downgrades recharts) or `add calendar` (re-adds date-fns); alert-dialog, slider, carousel, calendar, sidebar, navigation-menu, form and use-mobile carry local fixes and must not be overwritten
+- toast.tsx (Base UI) and sonner.tsx both export a Toaster; mount one, not both
 
 ## React 19 + Server Actions
 
@@ -69,7 +72,7 @@ const adminSupabase = await createAdminClient()
 async function submitForm(prevState: State, formData: FormData) {
   const validated = schema.safeParse(Object.fromEntries(formData))
   if (!validated.success) {
-    return { errors: validated.error.flatten().fieldErrors }
+    return { errors: z.flattenError(validated.error).fieldErrors }
   }
   // Process data...
   revalidatePath("/")
@@ -132,9 +135,9 @@ const mutation = useMutation({
 
 ## Animation
 
-**Framer Motion** - for complex animations:
+**Motion** (motion.dev, formerly Framer Motion) - for complex animations:
 ```tsx
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "motion/react"
 
 // Basic animation
 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
@@ -148,6 +151,8 @@ const MotionCard = motion.create(Card)
   {isVisible && <motion.div exit={{ opacity: 0 }}>...</motion.div>}
 </AnimatePresence>
 ```
+
+Server Components: import from "motion/react-client" (`import * as motion from "motion/react-client"`); "motion/react" is client-only.
 
 **CSS animations**: Use **tw-animate-css** (not tailwindcss-animate) for Tailwind v4.
 
@@ -191,3 +196,22 @@ const MotionCard = motion.create(Card)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (required to enable Supabase)
 - `SUPABASE_SERVICE_ROLE_KEY` (additionally required for the admin client)
 - when designing UI or building frontend components, make sure to use the frontend-design skill
+
+## Dependency notes
+
+- TypeScript stays on 6.x on purpose: typescript-eslint (pulled in by eslint-config-next/typescript) throws at load on TS >= 7 and TS 7.0 ships no JS compiler API. Revisit when typescript-eslint supports TS 7.1+.
+- ESLint 10 runs with eslint-config-next via `settings.react.version: "19"` in eslint.config.mjs (eslint-plugin-react's version detection crashes on ESLint 10). The 3 `ERESOLVE overriding peer dependency` warnings on install are expected; do not add --legacy-peer-deps.
+- Node >= 24.15 is required by jsdom 30 (older 24.x prints EBADENGINE warnings but works, and `npm outdated` there wrongly lists jsdom's latest as 29.x; do not downgrade). CI uses Node 24.
+- Vitest uses Vite 8's built-in TSX transform; @vitejs/plugin-react is intentionally not installed.
+- Next 16.3 manages the `nextjs-agent-rules` block at the end of this file (`agentRules`, default on); keep it committed so `next dev` does not dirty the tree.
+- No `overrides` or platform `optionalDependencies` are needed; npm >= 11.3 records linux binaries in a macOS-generated lockfile.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
